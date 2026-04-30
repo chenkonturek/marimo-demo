@@ -2,13 +2,15 @@
 
 An interactive marketing channel monitoring dashboard built with [marimo](https://marimo.io/).
 
+**Live demo:** https://chenkonturek.github.io/marimo-demo/
+
 ## Setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Running
+## Running locally
 
 ```bash
 # App mode — browser UI only, no code
@@ -31,6 +33,7 @@ The dashboard visualises simulated daily marketing volume across 6 channels and 
 - **Granularity** — aggregate by Day / Week / Month
 
 **Charts**
+
 | Chart | What it shows |
 |---|---|
 | KPI cards | Total volume, top channel, month-over-month growth vs the prior 30-day window |
@@ -44,9 +47,13 @@ Colors are pinned consistently across the line and bar charts — the same chann
 
 Volume is generated deterministically (`numpy.random.seed(42)`) with:
 - per-channel base volumes and age-group weights
-- 20 % long-term growth trend over the 18-month window
+- 20% long-term growth trend over the 18-month window
 - weekday uplift (×1.1 Mon–Fri, ×0.65 Sat–Sun)
 - summer dip (Jul–Aug ×0.82) and holiday peak (Nov–Dec ×1.08)
-- Gaussian noise (σ = 12 %)
+- Gaussian noise (σ = 12%)
 
 To swap in real data, replace the data_simulation cell with a DataFrame that has the same four columns: `date`, `channel`, `population`, `volume`.
+
+## Deployment
+
+Pushing to `main` automatically deploys to GitHub Pages via `.github/workflows/deploy.yml`. The workflow exports the notebook as a WASM HTML file using `marimo export html-wasm` — Python runs entirely in the browser via Pyodide, no server required.

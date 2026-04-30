@@ -13,6 +13,9 @@ marimo run dashboard.py
 
 # Run in notebook/edit mode (code + output visible)
 marimo edit dashboard.py
+
+# Export as interactive WASM HTML (what GitHub Actions runs)
+marimo export html-wasm dashboard.py -o dist/ --mode run --no-show-code
 ```
 
 ## Architecture
@@ -31,11 +34,11 @@ imports → data_simulation → controls → filtering → display
 
 | Cell | Inputs | Exports | Notes |
 |---|---|---|---|
-| **imports** | — | `mo, pd, np, px` | |
+| **imports** | — | `mo, pd, np, alt` | |
 | **data_simulation** | `np, pd` | `df, CHANNELS, POPULATIONS, START_DATE, END_DATE` | Deterministic (`seed=42`); 16 500 rows |
 | **controls** | `mo, CHANNELS, POPULATIONS, START_DATE, END_DATE` | `channel_filter, population_filter, date_range_picker, granularity_dd` | Creates `mo.ui` widgets; no display here |
 | **filtering** | all 4 controls + `df, pd` | `filtered, agg_df` | Reruns on every control change |
-| **display** | `CHANNELS, filtered, agg_df` + all 4 controls + `mo, pd, px` | *(none)* | Only cell with visible output — KPIs, 3 charts, full layout |
+| **display** | `CHANNELS, POPULATIONS, filtered, agg_df` + all 4 controls + `mo, pd, alt` | *(none)* | Only cell with visible output — KPIs, 3 charts, full layout |
 
 ### Simulated data schema
 
@@ -50,10 +53,24 @@ To change the date window or channel mix, edit `CHANNEL_BASE` / `CHANNEL_POP_WEI
 
 ### Color consistency
 
-Both the line chart and stacked bar share a `_color_map` built from `zip(CHANNELS, px.colors.qualitative.Plotly)` and `category_orders={"channel": CHANNELS}`. Any new chart should reuse `_color_map` and `_cat_order` to stay consistent.
+All charts share `_color` built from `alt.Scale(domain=CHANNELS, range=_COLORS)` where `_COLORS` is a fixed 6-color list matching Plotly's qualitative palette. Any new channel-colored chart must reuse this scale. The `CHANNELS` list order controls legend order.
+
+### Chart library: altair (not plotly)
+
+Charts use **altair** (Vega-Lite). Do not switch to plotly — plotly is not in marimo's Pyodide lockfile and will fail with an internal error on GitHub Pages. Altair 5.4.1 is bundled and loads reliably in the WASM environment.
 
 ### Marimo conventions used here
 
 - Cell-local variables are prefixed with `_` to prevent them from leaking into the reactive namespace.
 - UI widgets are created once in the **controls** cell and threaded through the dependency graph — never recreated inside computation or display cells.
 - The **display** cell is the sole place that calls `mo.vstack`; it ends with `mo.vstack([...])` as a bare expression (no `return`) so marimo captures it as the cell output.
+
+## Deployment
+
+The dashboard is deployed to GitHub Pages at `https://chenkonturek.github.io/marimo-demo/` via `.github/workflows/deploy.yml`. On every push to `main` the workflow:
+
+1. Installs `marimo` (only marimo — other packages load via Pyodide in the browser)
+2. Runs `marimo export html-wasm` to produce a self-contained `dist/index.html`
+3. Deploys `dist/` to GitHub Pages using the official `actions/deploy-pages` action
+
+The WASM export embeds the notebook code; Pyodide fetches `pandas`, `numpy`, and `altair` from marimo's lockfile at `wasm.marimo.app` when the page loads.

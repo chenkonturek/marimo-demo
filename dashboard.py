@@ -5,7 +5,8 @@ app = marimo.App()
 
 
 @app.cell
-def __():
+def imports():
+    """Load third-party libraries used across all cells."""
     import marimo as mo
     import pandas as pd
     import numpy as np
@@ -14,7 +15,13 @@ def __():
 
 
 @app.cell
-def __(np, pd):
+def simulate_data(np, pd):
+    """Generate 18 months of simulated daily marketing volume.
+
+    Produces a DataFrame with columns: date, channel, population, volume.
+    Volume is deterministic (seed=42) and incorporates a 20% growth trend,
+    weekday uplift, monthly seasonality, and Gaussian noise.
+    """
     CHANNELS = [
         "Email",
         "Paid Search",
@@ -79,7 +86,8 @@ def __(np, pd):
 
 
 @app.cell
-def __(CHANNELS, END_DATE, POPULATIONS, START_DATE, mo):
+def controls(CHANNELS, END_DATE, POPULATIONS, START_DATE, mo):
+    """Create UI filter widgets. Widgets are displayed via the layout cell."""
     channel_filter = mo.ui.multiselect(
         options=CHANNELS, value=CHANNELS, label="Channels"
     )
@@ -96,7 +104,13 @@ def __(CHANNELS, END_DATE, POPULATIONS, START_DATE, mo):
 
 
 @app.cell
-def __(channel_filter, date_range_picker, df, granularity_dd, pd, population_filter):
+def filter_data(channel_filter, date_range_picker, df, granularity_dd, pd, population_filter):
+    """Apply UI filter selections to the raw DataFrame.
+
+    Returns:
+        filtered: row-level DataFrame matching all active filters.
+        agg_df: filtered data aggregated by channel at the chosen granularity.
+    """
     _sel_ch = channel_filter.value or df["channel"].unique().tolist()
     _sel_pop = population_filter.value or df["population"].unique().tolist()
     _d0, _d1 = date_range_picker.value
@@ -120,7 +134,8 @@ def __(channel_filter, date_range_picker, df, granularity_dd, pd, population_fil
 
 
 @app.cell
-def __(CHANNELS, POPULATIONS, agg_df, alt, channel_filter, date_range_picker, filtered, granularity_dd, mo, pd, population_filter):
+def layout(CHANNELS, POPULATIONS, agg_df, alt, channel_filter, date_range_picker, filtered, granularity_dd, mo, pd, population_filter):
+    """Compute KPIs, build Altair charts, and assemble the full dashboard layout."""
     # ── KPI metrics ──────────────────────────────────────────────
     _total = int(filtered["volume"].sum())
     if not filtered.empty:

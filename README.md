@@ -57,3 +57,10 @@ To swap in real data, replace the data_simulation cell with a DataFrame that has
 ## Deployment
 
 Pushing to `main` automatically deploys to GitHub Pages via `.github/workflows/deploy.yml`. The workflow exports the notebook as a WASM HTML file using `marimo export html-wasm` — Python runs entirely in the browser via Pyodide, no server required.
+
+To preview the WASM build locally before pushing:
+
+```bash
+marimo export html-wasm dashboard.py -o dist/ --mode run --no-show-code
+python -m http.server --directory dist/
+```

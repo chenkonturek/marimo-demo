@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project files
+
+| File | Purpose |
+|---|---|
+| `dashboard.py` | Marimo app — single source of truth for the dashboard |
+| `requirements.txt` | Local dev dependencies (`marimo pandas numpy altair`) |
+| `.github/workflows/deploy.yml` | GitHub Actions workflow — exports WASM and deploys to GitHub Pages |
+| `.gitignore` | Excludes `.idea/`, `dist/`, `__pycache__` |
+
 ## Commands
 
 ```bash

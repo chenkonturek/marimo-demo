@@ -9,8 +9,8 @@ def __():
     import marimo as mo
     import pandas as pd
     import numpy as np
-    import plotly.express as px
-    return mo, np, pd, px
+    import altair as alt
+    return alt, mo, np, pd
 
 
 @app.cell
@@ -120,7 +120,7 @@ def __(channel_filter, date_range_picker, df, granularity_dd, pd, population_fil
 
 
 @app.cell
-def __(CHANNELS, agg_df, channel_filter, date_range_picker, filtered, granularity_dd, mo, pd, population_filter, px):
+def __(CHANNELS, POPULATIONS, agg_df, alt, channel_filter, date_range_picker, filtered, granularity_dd, mo, pd, population_filter):
     # ── KPI metrics ──────────────────────────────────────────────
     _total = int(filtered["volume"].sum())
     if not filtered.empty:
@@ -136,39 +136,57 @@ def __(CHANNELS, agg_df, channel_filter, date_range_picker, filtered, granularit
         _top_ch = "N/A"
         _mom = "N/A"
 
-    # ── Charts ───────────────────────────────────────────────────
-    _color_map = dict(zip(CHANNELS, px.colors.qualitative.Plotly))
-    _cat_order = {"channel": CHANNELS}
-
-    _ts_fig = px.line(
-        agg_df, x="date", y="volume", color="channel",
-        title="Volume Over Time by Channel",
-        labels={"volume": "Volume", "date": "Date", "channel": "Channel"},
-        color_discrete_map=_color_map,
-        category_orders=_cat_order,
+    # ── Shared color scale (same order & colors across charts) ────
+    _COLORS = ["#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A", "#19D3F3"]
+    _color = alt.Color(
+        "channel:N",
+        scale=alt.Scale(domain=CHANNELS, range=_COLORS),
+        legend=alt.Legend(title="Channel"),
     )
-    _ts_fig.update_layout(hovermode="x unified", legend_title_text="Channel")
 
-    _bar_fig = px.bar(
-        agg_df, x="date", y="volume", color="channel", barmode="stack",
-        title="Stacked Volume by Channel",
-        labels={"volume": "Volume", "date": "Date", "channel": "Channel"},
-        color_discrete_map=_color_map,
-        category_orders=_cat_order,
+    # ── Time series line chart ────────────────────────────────────
+    _ts = (
+        alt.Chart(agg_df)
+        .mark_line()
+        .encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("volume:Q", title="Volume"),
+            color=_color,
+            tooltip=["date:T", "channel:N", "volume:Q"],
+        )
+        .properties(title="Volume Over Time by Channel", width="container", height=320)
     )
-    _bar_fig.update_layout(legend_title_text="Channel")
 
-    _pivot = (
+    # ── Stacked bar chart ─────────────────────────────────────────
+    _bar = (
+        alt.Chart(agg_df)
+        .mark_bar()
+        .encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("volume:Q", title="Volume", stack=True),
+            color=_color,
+            order=alt.Order("channel:N", sort=CHANNELS),
+            tooltip=["date:T", "channel:N", "volume:Q"],
+        )
+        .properties(title="Stacked Volume by Channel", width="container", height=320)
+    )
+
+    # ── Channel × Population heatmap ──────────────────────────────
+    _hm_df = (
         filtered.groupby(["channel", "population"])["volume"]
-        .sum().reset_index()
-        .pivot(index="channel", columns="population", values="volume")
-        .fillna(0)
+        .sum()
+        .reset_index()
     )
-    _hm_fig = px.imshow(
-        _pivot, text_auto=True, aspect="auto",
-        title="Total Volume: Channel × Population",
-        color_continuous_scale="Blues",
-        labels={"x": "Population", "y": "Channel", "color": "Volume"},
+    _hm = (
+        alt.Chart(_hm_df)
+        .mark_rect()
+        .encode(
+            x=alt.X("population:N", title="Population", sort=POPULATIONS),
+            y=alt.Y("channel:N", title="Channel", sort=CHANNELS),
+            color=alt.Color("volume:Q", title="Volume", scale=alt.Scale(scheme="blues")),
+            tooltip=["channel:N", "population:N", "volume:Q"],
+        )
+        .properties(title="Total Volume: Channel × Population", width="container", height=240)
     )
 
     # ── Layout ───────────────────────────────────────────────────
@@ -184,7 +202,7 @@ def __(CHANNELS, agg_df, channel_filter, date_range_picker, filtered, granularit
             mo.stat(value=_top_ch, label="Top Channel"),
             mo.stat(value=_mom, label="MoM Growth"),
         ]),
-        mo.ui.plotly(_ts_fig),
-        mo.ui.plotly(_bar_fig),
-        mo.ui.plotly(_hm_fig),
+        _ts,
+        _bar,
+        _hm,
     ])

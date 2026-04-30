@@ -83,3 +83,33 @@ The dashboard is deployed to GitHub Pages at `https://chenkonturek.github.io/mar
 3. Deploys `dist/` to GitHub Pages using the official `actions/deploy-pages` action
 
 The WASM export embeds the notebook code; Pyodide fetches `pandas`, `numpy`, and `altair` from marimo's lockfile at `wasm.marimo.app` when the page loads.
+
+## Coding Standards
+
+### Type annotations
+- All public functions and methods must have full type annotations (parameters + return type), including `-> None`.
+- Use native union syntax (`X | Y`, `list[X]`) — no need for `from __future__ import annotations` since floor is 3.12.
+- Prefer concrete types over `Any`; use `Any` only when truly unavoidable and leave a comment explaining why.
+
+### Docstrings
+- Every public module, class, and function must have a one-line summary in imperative mood ("Return …", "Apply …", "Raise …").
+- Use [Google Python Style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) for multi-line docstrings: `Args:`, `Returns:`, `Raises:`, and `Attributes:` sections.
+- **Class docstrings** describe the class's responsibility. Include an `Attributes:` section for non-obvious fields.
+- **Functions/methods**: add `Args:` for non-obvious parameters and `Returns:` when the shape or conditions of the return value are non-trivial. Omit sections that would only restate the type annotation.
+- Private helpers (`_name`) do not need docstrings unless the logic is subtle.
+
+### Dataclasses & immutability
+- Use `@dataclass(frozen=True)` for config/value objects that must not change after creation (see `GameConfig`).
+- Use plain `@dataclass` for mutable game entities (see `Bird`).
+
+### Constants & magic numbers
+- Domain constants belong in `GameConfig`; avoid bare numeric literals in logic files.
+- Module-level constants (non-config) go at the top of the module in `SCREAMING_SNAKE_CASE`.
+
+### No bare `print`
+- Use `rich.console.Console` for any terminal output; never use `print()` in library code.
+
+### Error handling
+- Raise `ValueError` / `TypeError` at public API boundaries with a descriptive message.
+- Do not swallow exceptions silently; re-raise or log.
+- Avoid returning `None` to signal failure — raise instead.
